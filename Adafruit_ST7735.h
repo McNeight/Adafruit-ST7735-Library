@@ -4,7 +4,7 @@
   ----> http://www.adafruit.com/products/358
   as well as Adafruit raw 1.8" TFT display
   ----> http://www.adafruit.com/products/618
- 
+
   Check out the links above for our tutorials and wiring diagrams
   These displays use SPI to communicate, 4 or 5 pins are required to
   interface (RST is optional)
@@ -16,27 +16,20 @@
   MIT license, all text above must be included in any redistribution
  ****************************************************/
 
-#ifndef _ADAFRUIT_ST7735H_
-#define _ADAFRUIT_ST7735H_
+#ifndef ADAFRUIT_ST7735_H
+#define ADAFRUIT_ST7735_H
 
 #if ARDUINO >= 100
- #include "Arduino.h"
- #include "Print.h"
+#include "Arduino.h"
+#include "Print.h"
 #else
- #include "WProgram.h"
+#include "WProgram.h"
 #endif
 
 #include <Adafruit_GFX.h>
 
-#if defined(__SAM3X8E__)
-#include <include/pio.h>
-  #define PROGMEM
-  #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
-  #define pgm_read_word(addr) (*(const unsigned short *)(addr))
-typedef unsigned char prog_uchar;
-#endif
-#ifdef __AVR__
-  #include <avr/pgmspace.h>
+#if defined(__ARDUINO_X86__)
+#define ST7735_BUFFER_SIZE 4096
 #endif
 
 // some flags for initR() :(
@@ -100,66 +93,56 @@ typedef unsigned char prog_uchar;
 #define	ST7735_GREEN   0x07E0
 #define ST7735_CYAN    0x07FF
 #define ST7735_MAGENTA 0xF81F
-#define ST7735_YELLOW  0xFFE0  
+#define ST7735_YELLOW  0xFFE0
 #define ST7735_WHITE   0xFFFF
 
+#define MADCTL_MY  0x80
+#define MADCTL_MX  0x40
+#define MADCTL_MV  0x20
+#define MADCTL_ML  0x10
+#define MADCTL_RGB 0x00
+#define MADCTL_BGR 0x08
+#define MADCTL_MH  0x04
 
-class Adafruit_ST7735 : public Adafruit_GFX {
+#define DELAY 0x80
 
- public:
+class Adafruit_ST7735 : public Adafruit_GFX
+{
 
-  Adafruit_ST7735(uint8_t CS, uint8_t RS, uint8_t SID, uint8_t SCLK,
-    uint8_t RST);
-  Adafruit_ST7735(uint8_t CS, uint8_t RS, uint8_t RST);
+  public:
 
-  void     initB(void),                             // for ST7735B displays
-           initR(uint8_t options = INITR_GREENTAB), // for ST7735R
-           setAddrWindow(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1),
-           pushColor(uint16_t color),
-           fillScreen(uint16_t color),
-           drawPixel(int16_t x, int16_t y, uint16_t color),
-           drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color),
-           drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color),
-           fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
-             uint16_t color),
-           setRotation(uint8_t r),
-           invertDisplay(boolean i);
-  uint16_t Color565(uint8_t r, uint8_t g, uint8_t b);
+    Adafruit_ST7735(uint8_t CSX, uint8_t DCX, uint8_t RESX);
 
-  /* These are not for current use, 8-bit protocol only!
-  uint8_t  readdata(void),
-           readcommand8(uint8_t);
-  uint16_t readcommand16(uint8_t);
-  uint32_t readcommand32(uint8_t);
-  void     dummyclock(void);
-  */
+    void     initB(void),                             // for ST7735B displays
+             initR(uint8_t options = INITR_GREENTAB), // for ST7735R
+             setAddrWindowOld(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1),
+             setAddrWindow(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1),
+             pushColor(uint16_t color),
+             pushColorBuffer(const uint8_t *d, uint32_t length),
+             fillScreen(uint16_t color),
+             drawPixel(int16_t x, int16_t y, uint16_t color),
+             drawPixelBuffer(int16_t x, int16_t y, const uint8_t *d, uint32_t length),
+             drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color),
+             drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color),
+             fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
+                      uint16_t color),
+             setRotation(uint8_t r),
+             invertDisplay(boolean i);
+    uint16_t Color565(uint8_t r, uint8_t g, uint8_t b);
 
- private:
-  uint8_t  tabcolor;
+  private:
+    uint8_t  tabcolor;
 
-  void     spiwrite(uint8_t),
-           writecommand(uint8_t c),
-           writedata(uint8_t d),
-           commandList(const uint8_t *addr),
-           commonInit(const uint8_t *cmdList);
-//uint8_t  spiread(void);
+    void     writeCommand(uint8_t c),
+             writeCommandBuffer(const uint8_t *c, uint32_t length),
+             writeData(uint8_t d),
+             writeDataBuffer(const uint8_t *d, uint32_t length),
+             commandList(const uint8_t *addr),
+             commonInit(const uint8_t *cmdList);
 
-  boolean  hwSPI;
-
-#if defined(__AVR__) || defined(CORE_TEENSY)
-volatile uint8_t *dataport, *clkport, *csport, *rsport;
-  uint8_t  _cs, _rs, _rst, _sid, _sclk,
-           datapinmask, clkpinmask, cspinmask, rspinmask,
-           colstart, rowstart; // some displays need this changed
-#endif //  #ifdef __AVR__
-
-#if defined(__SAM3X8E__)
-  Pio *dataport, *clkport, *csport, *rsport;
-  uint32_t  _cs, _rs, _rst, _sid, _sclk,
-            datapinmask, clkpinmask, cspinmask, rspinmask,
-            colstart, rowstart; // some displays need this changed
-#endif //  #if defined(__SAM3X8E__)
-  
+    uint8_t  ST7735_CSX, ST7735_DCX, ST7735_RESX,
+             colstart, rowstart, // some displays need this changed
+             pixelBuffer[ST7735_BUFFER_SIZE];
 };
 
-#endif
+#endif // ADAFRUIT_ST7735_H
